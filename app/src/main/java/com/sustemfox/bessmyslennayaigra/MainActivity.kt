@@ -2,7 +2,8 @@ package com.sustemfox.bessmyslennayaigra
 
 import android.app.Activity
 import android.content.Context
-import android.view.SoundEffectConstants
+import android.media.AudioAttributes
+import android.media.SoundPool
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
@@ -23,6 +24,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
@@ -50,13 +52,14 @@ private val muted = Color(0xFFA6ADC8)
     val prefs = remember { context.getSharedPreferences("game_state", Context.MODE_PRIVATE) }
     var page by rememberSaveable { mutableStateOf("menu") }
     var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
+    var vibrationEnabled by remember { mutableStateOf(prefs.getBoolean("vibration_enabled", true)) }
     val activity = context as? Activity
     MaterialTheme(colorScheme = darkColorScheme(background = background, surface = surface)) {
         Surface(Modifier.fillMaxSize(), color = background) {
             AnimatedContent(targetState = page, transitionSpec = { fadeIn(tween(280)) togetherWith fadeOut(tween(180)) }, label = "page") { current ->
                 when (current) {
-                    "game" -> GameScreen(prefs.getInt("score", 0), soundEnabled, onScore = { prefs.edit().putInt("score", it).apply() }, onBack = { page = "menu" })
-                    "settings" -> SettingsScreen(soundEnabled, { soundEnabled = it; prefs.edit().putBoolean("sound_enabled", it).apply() }, { page = "menu" })
+                    "game" -> GameScreen(prefs.getInt("score", 0), soundEnabled, vibrationEnabled, onScore = { prefs.edit().putInt("score", it).apply() }, onBack = { page = "menu" })
+                    "settings" -> SettingsScreen(soundEnabled, vibrationEnabled, { soundEnabled = it; prefs.edit().putBoolean("sound_enabled", it).apply() }, { vibrationEnabled = it; prefs.edit().putBoolean("vibration_enabled", it).apply() }, { page = "menu" })
                     else -> MenuScreen(onPlay = { page = "game" }, onSettings = { page = "settings" }, onExit = { activity?.finish() })
                 }
             }
@@ -84,20 +87,30 @@ private val muted = Color(0xFFA6ADC8)
     Button(onClick = action, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) { Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 }
 
-@Composable private fun SettingsScreen(sound: Boolean, onSound: (Boolean) -> Unit, onBack: () -> Unit) {
+@Composable private fun SettingsScreen(sound: Boolean, vibration: Boolean, onSound: (Boolean) -> Unit, onVibration: (Boolean) -> Unit, onBack: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Text("НАСТРОЙКИ", color = ink, fontSize = 27.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(22.dp))
-        Surface(shape = RoundedCornerShape(18.dp), color = surface) { Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text("Звук клика", color = ink, fontWeight = FontWeight.Bold); Text("Короткий сигнал при нажатии", color = muted, fontSize = 13.sp) }; Switch(checked = sound, onCheckedChange = onSound) } }
+        SettingToggle("Звук клика", "Аркадный звук при нажатии", sound, onSound)
+        Spacer(Modifier.height(12.dp))
+        SettingToggle("Вибрация", "Тактильный отклик при нажатии", vibration, onVibration)
         Spacer(Modifier.weight(1f)); OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Назад") }
     }
 }
 
-@Composable private fun GameScreen(savedScore: Int, soundEnabled: Boolean, onScore: (Int) -> Unit, onBack: () -> Unit) {
+@Composable private fun SettingToggle(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Surface(shape = RoundedCornerShape(18.dp), color = surface) { Row(Modifier.fillMaxWidth().padding(18.dp), verticalAlignment = Alignment.CenterVertically) { Column(Modifier.weight(1f)) { Text(title, color = ink, fontWeight = FontWeight.Bold); Text(subtitle, color = muted, fontSize = 13.sp) }; Switch(checked = checked, onCheckedChange = onChange) } }
+}
+
+@Composable private fun GameScreen(savedScore: Int, soundEnabled: Boolean, vibrationEnabled: Boolean, onScore: (Int) -> Unit, onBack: () -> Unit) {
     var score by rememberSaveable { mutableIntStateOf(savedScore) }; var phrase by rememberSaveable { mutableStateOf("Добро пожаловать в игру без цели.") }; var title by rememberSaveable { mutableStateOf("Нажми меня") }; var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.88f else 1f, tween(130, easing = FastOutSlowInEasing), label = "buttonScale")
     val color = listOf(Color(0xFFFF6B6B), Color(0xFF6C63FF), Color(0xFF00BFA6), Color(0xFFFFB703))[score % 4]
     val view = LocalView.current
+    val context = view.context
+    val soundPool = remember { SoundPool.Builder().setMaxStreams(2).setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build() }
+    var clickSound by remember { mutableIntStateOf(0) }
+    DisposableEffect(soundPool) { clickSound = soundPool.load(context, R.raw.click, 1); onDispose { soundPool.release() } }
     Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← Меню") }; Spacer(Modifier.weight(1f)); Text("Уровень ${score / 25 + 1}", color = muted) }
         Text("ПРИЧИНА НЕ НАЙДЕНА", color = ink, fontSize = 19.sp, fontWeight = FontWeight.Black)
@@ -105,7 +118,7 @@ private val muted = Color(0xFFA6ADC8)
         AnimatedContent(score, label = "score") { Text("$it", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink) }
         Text("единиц бессмысленности", color = muted)
         Spacer(Modifier.height(28.dp))
-        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled) view.playSoundEffect(SoundEffectConstants.CLICK); score++; onScore(score); phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
+        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; if (vibrationEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled && clickSound != 0) soundPool.play(clickSound, 0.9f, 0.9f, 1, 0, 1f); score++; onScore(score); phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
         Spacer(Modifier.height(30.dp))
         Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(phrase, color = Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
         Spacer(Modifier.weight(1f)); Text("Рекорд: $score. Никому не рассказывай.", color = Color(0xFF6C7086), fontSize = 12.sp)
