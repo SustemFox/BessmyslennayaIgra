@@ -1,8 +1,7 @@
 package com.sustemfox.bessmyslennayaigra
 
 import android.app.Activity
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.view.SoundEffectConstants
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
 import androidx.activity.ComponentActivity
@@ -69,17 +68,17 @@ private val muted = Color(0xFFA6ADC8)
         Spacer(Modifier.height(28.dp))
         Text("БЕССМЫСЛЕННАЯ\nИГРА", textAlign = TextAlign.Center, color = ink, fontSize = 31.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
         Text("Никакой цели. Никаких причин остановиться.", color = muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp, bottom = 40.dp))
-        MenuButton("Играть", Color(0xFF6C63FF), onPlay)
+        MenuButton("Играть", Color(0xFF00A884), onPlay)
         Spacer(Modifier.height(12.dp))
-        MenuButton("Настройки", Color(0xFF313244), onSettings)
+        MenuButton("Настройки", Color(0xFF2563EB), onSettings)
         Spacer(Modifier.height(12.dp))
-        MenuButton("Выход", Color(0xFF45475A), onExit)
+        MenuButton("Выход", Color(0xFFD14343), onExit)
         Spacer(Modifier.height(28.dp)); Text("v1.0 • сделано без особой причины", color = Color(0xFF6C7086), fontSize = 12.sp)
     }
 }
 
 @Composable private fun MenuButton(text: String, color: Color, action: () -> Unit) {
-    Button(onClick = action, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = color)) { Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+    Button(onClick = action, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) { Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 }
 
 @Composable private fun SettingsScreen(sound: Boolean, onSound: (Boolean) -> Unit, onBack: () -> Unit) {
@@ -103,7 +102,7 @@ private val muted = Color(0xFFA6ADC8)
         AnimatedContent(score, label = "score") { Text("$it", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink) }
         Text("единиц бессмысленности", color = muted)
         Spacer(Modifier.height(28.dp))
-        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled) ToneGenerator(AudioManager.STREAM_MUSIC, 35).startTone(ToneGenerator.TONE_PROP_BEEP, 55); score++; phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
+        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled) view.playSoundEffect(SoundEffectConstants.CLICK); score++; phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
         Spacer(Modifier.height(30.dp))
         Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(phrase, color = Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
         Spacer(Modifier.weight(1f)); Text("Рекорд: $score. Никому не рассказывай.", color = Color(0xFF6C7086), fontSize = 12.sp)
