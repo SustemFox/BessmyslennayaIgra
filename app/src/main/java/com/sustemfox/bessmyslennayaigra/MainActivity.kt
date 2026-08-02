@@ -30,6 +30,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import kotlinx.coroutines.delay
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -103,22 +107,52 @@ private val muted = Color(0xFFA6ADC8)
 }
 
 @Composable private fun GameScreen(savedScore: Int, soundEnabled: Boolean, vibrationEnabled: Boolean, onScore: (Int) -> Unit, onBack: () -> Unit) {
-    var score by rememberSaveable { mutableIntStateOf(savedScore) }; var phrase by rememberSaveable { mutableStateOf("Добро пожаловать в игру без цели.") }; var title by rememberSaveable { mutableStateOf("Нажми меня") }; var pressed by remember { mutableStateOf(false) }
+    var score by rememberSaveable { mutableIntStateOf(savedScore) }
+    var phrase by rememberSaveable { mutableStateOf("Добро пожаловать в игру без цели.") }
+    var title by rememberSaveable { mutableStateOf("Нажми меня") }
+    var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.88f else 1f, tween(130, easing = FastOutSlowInEasing), label = "buttonScale")
     val color = listOf(Color(0xFFFF6B6B), Color(0xFF6C63FF), Color(0xFF00BFA6), Color(0xFFFFB703))[score % 4]
     val view = LocalView.current
     val context = view.context
+
+    // Счёт сохраняем не на каждый клик, а при паузе/выходе — бережём флеш-память
+    val saveScore = { onScore(score) }
+    val currentSaveScore by rememberUpdatedState(saveScore)
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_PAUSE) currentSaveScore()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            currentSaveScore()
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
     val soundPool = remember { SoundPool.Builder().setMaxStreams(2).setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()).build() }
     var clickSound by remember { mutableIntStateOf(0) }
     DisposableEffect(soundPool) { clickSound = soundPool.load(context, R.raw.click, 1); onDispose { soundPool.release() } }
+
+    // Возврат кнопки после нажатия — с задержкой, чтобы анимация успевала проиграться
+    LaunchedEffect(pressed) { if (pressed) { delay(140); pressed = false } }
+
     Column(Modifier.fillMaxSize().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = onBack) { Text("← Меню") }; Spacer(Modifier.weight(1f)); Text("Уровень ${score / 25 + 1}", color = muted) }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = { currentSaveScore(); onBack() }) { Text("← Меню") }; Spacer(Modifier.weight(1f)); Text("Уровень ${score / 25 + 1}", color = muted) }
         Text("ПРИЧИНА НЕ НАЙДЕНА", color = ink, fontSize = 19.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.weight(1f))
         AnimatedContent(score, label = "score") { Text("$it", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink) }
         Text("единиц бессмысленности", color = muted)
         Spacer(Modifier.height(28.dp))
-        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; if (vibrationEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled && clickSound != 0) soundPool.play(clickSound, 0.9f, 0.9f, 1, 0, 1f); score++; onScore(score); phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
+        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable {
+            pressed = true
+            if (vibrationEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            if (soundEnabled && clickSound != 0) soundPool.play(clickSound, 0.9f, 0.9f, 1, 0, 1f)
+            score++
+            phrase = phrases.random()
+            title = titles.random()
+        }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
         Spacer(Modifier.height(30.dp))
         Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(phrase, color = Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
         Spacer(Modifier.weight(1f)); Text("Рекорд: $score. Никому не рассказывай.", color = Color(0xFF6C7086), fontSize = 12.sp)
