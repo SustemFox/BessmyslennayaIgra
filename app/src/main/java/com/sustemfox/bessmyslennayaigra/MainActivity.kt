@@ -1,6 +1,7 @@
 package com.sustemfox.bessmyslennayaigra
 
 import android.app.Activity
+import android.content.Context
 import android.view.SoundEffectConstants
 import android.os.Bundle
 import android.view.HapticFeedbackConstants
@@ -45,15 +46,17 @@ private val ink = Color(0xFFF5E0DC)
 private val muted = Color(0xFFA6ADC8)
 
 @Composable private fun MeaninglessApp() {
+    val context = LocalView.current.context
+    val prefs = remember { context.getSharedPreferences("game_state", Context.MODE_PRIVATE) }
     var page by rememberSaveable { mutableStateOf("menu") }
-    var soundEnabled by rememberSaveable { mutableStateOf(true) }
-    val activity = LocalView.current.context as? Activity
+    var soundEnabled by remember { mutableStateOf(prefs.getBoolean("sound_enabled", true)) }
+    val activity = context as? Activity
     MaterialTheme(colorScheme = darkColorScheme(background = background, surface = surface)) {
         Surface(Modifier.fillMaxSize(), color = background) {
             AnimatedContent(targetState = page, transitionSpec = { fadeIn(tween(280)) togetherWith fadeOut(tween(180)) }, label = "page") { current ->
                 when (current) {
-                    "game" -> GameScreen(soundEnabled, onBack = { page = "menu" })
-                    "settings" -> SettingsScreen(soundEnabled, { soundEnabled = it }, { page = "menu" })
+                    "game" -> GameScreen(prefs.getInt("score", 0), soundEnabled, onScore = { prefs.edit().putInt("score", it).apply() }, onBack = { page = "menu" })
+                    "settings" -> SettingsScreen(soundEnabled, { soundEnabled = it; prefs.edit().putBoolean("sound_enabled", it).apply() }, { page = "menu" })
                     else -> MenuScreen(onPlay = { page = "game" }, onSettings = { page = "settings" }, onExit = { activity?.finish() })
                 }
             }
@@ -64,7 +67,7 @@ private val muted = Color(0xFFA6ADC8)
 @Composable private fun MenuScreen(onPlay: () -> Unit, onSettings: () -> Unit, onExit: () -> Unit) {
     val pulse by rememberInfiniteTransition(label = "logo").animateFloat(initialValue = 0.96f, targetValue = 1.04f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "pulse")
     Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-        Surface(Modifier.size(128.dp).scale(pulse), CircleShape, color = Color(0xFF6C63FF), shadowElevation = 12.dp) { Box(contentAlignment = Alignment.Center) { Text("?", fontSize = 76.sp, fontWeight = FontWeight.Black, color = Color.White) } }
+        Surface(Modifier.size(128.dp).scale(pulse), CircleShape, color = Color(0xFFF97316), shadowElevation = 12.dp) { Box(contentAlignment = Alignment.Center) { Text("⚡", fontSize = 68.sp, fontWeight = FontWeight.Black, color = Color(0xFFFEF3C7)) } }
         Spacer(Modifier.height(28.dp))
         Text("БЕССМЫСЛЕННАЯ\nИГРА", textAlign = TextAlign.Center, color = ink, fontSize = 31.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
         Text("Никакой цели. Никаких причин остановиться.", color = muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp, bottom = 40.dp))
@@ -90,8 +93,8 @@ private val muted = Color(0xFFA6ADC8)
     }
 }
 
-@Composable private fun GameScreen(soundEnabled: Boolean, onBack: () -> Unit) {
-    var score by rememberSaveable { mutableIntStateOf(0) }; var phrase by rememberSaveable { mutableStateOf("Добро пожаловать в игру без цели.") }; var title by rememberSaveable { mutableStateOf("Нажми меня") }; var pressed by remember { mutableStateOf(false) }
+@Composable private fun GameScreen(savedScore: Int, soundEnabled: Boolean, onScore: (Int) -> Unit, onBack: () -> Unit) {
+    var score by rememberSaveable { mutableIntStateOf(savedScore) }; var phrase by rememberSaveable { mutableStateOf("Добро пожаловать в игру без цели.") }; var title by rememberSaveable { mutableStateOf("Нажми меня") }; var pressed by remember { mutableStateOf(false) }
     val scale by animateFloatAsState(if (pressed) 0.88f else 1f, tween(130, easing = FastOutSlowInEasing), label = "buttonScale")
     val color = listOf(Color(0xFFFF6B6B), Color(0xFF6C63FF), Color(0xFF00BFA6), Color(0xFFFFB703))[score % 4]
     val view = LocalView.current
@@ -102,7 +105,7 @@ private val muted = Color(0xFFA6ADC8)
         AnimatedContent(score, label = "score") { Text("$it", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink) }
         Text("единиц бессмысленности", color = muted)
         Spacer(Modifier.height(28.dp))
-        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled) view.playSoundEffect(SoundEffectConstants.CLICK); score++; phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
+        Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable { pressed = true; view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP); if (soundEnabled) view.playSoundEffect(SoundEffectConstants.CLICK); score++; onScore(score); phrase = phrases.random(); title = titles.random(); pressed = false }) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp)) } }
         Spacer(Modifier.height(30.dp))
         Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(phrase, color = Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
         Spacer(Modifier.weight(1f)); Text("Рекорд: $score. Никому не рассказывай.", color = Color(0xFF6C7086), fontSize = 12.sp)
