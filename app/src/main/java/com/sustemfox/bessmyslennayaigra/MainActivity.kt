@@ -142,7 +142,7 @@ private val muted = Color(0xFFA6ADC8)
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) { TextButton(onClick = { currentSaveScore(); onBack() }) { Text("← Меню") }; Spacer(Modifier.weight(1f)); Text("Уровень ${score / 25 + 1}", color = muted) }
         Text("ПРИЧИНА НЕ НАЙДЕНА", color = ink, fontSize = 19.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.weight(1f))
-        AnimatedContent(score, label = "score") { Text("$it", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink) }
+        Text("$score", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink)
         Text("единиц бессмысленности", color = muted)
         Spacer(Modifier.height(28.dp))
         Surface(color = color, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale).clickable {
