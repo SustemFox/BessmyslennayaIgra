@@ -277,6 +277,7 @@ private val muted = Color(0xFFA6ADC8)
     var clickTimestamps by remember { mutableStateOf<List<Long>>(emptyList()) }
     var lastPhrase by remember { mutableStateOf<String?>(null) }
     var currentRank by remember { mutableStateOf("") }
+    var record by remember { mutableIntStateOf(prefs.getInt("best_score", 0)) }
     var diary by remember { mutableStateOf(readDiary(prefs)) }
     var easterEggTriggered by remember { mutableStateOf(false) }
     var sessionStart by remember { mutableStateOf(System.currentTimeMillis()) }
@@ -393,7 +394,10 @@ private val muted = Color(0xFFA6ADC8)
 
             score++
             prefs.edit().putInt("total_clicks", prefs.getInt("total_clicks", 0) + 1).apply()
-            if (score > prefs.getInt("best_score", 0)) prefs.edit().putInt("best_score", score).apply()
+            if (score > record) {
+                record = score
+                prefs.edit().putInt("best_score", record).apply()
+            }
 
             val threshold = thresholdMessages.keys.firstOrNull { it == score }
             if (threshold != null) {
@@ -463,5 +467,6 @@ private val muted = Color(0xFFA6ADC8)
         Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(if (phrase.isEmpty()) "…" else phrase, color = if (phrase.isEmpty()) Color(0xFF6C7086) else Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
         if (currentRank.isNotEmpty()) { Text("ранг: $currentRank", color = Color(0xFFF59E0B), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.weight(1f))
+        Text("Рекорд: $record. Никому не рассказывай.", color = Color(0xFF6C7086), fontSize = 12.sp)
     }
 }
