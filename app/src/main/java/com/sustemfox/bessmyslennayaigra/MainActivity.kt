@@ -23,6 +23,8 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -47,6 +49,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import com.sustemfox.bessmyslennayaigra.BuildConfig
 import kotlinx.coroutines.delay
+import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.roundToInt
 import kotlin.random.Random
 
@@ -77,7 +81,11 @@ private val earlyPhrases = listOf(
     "Ты приблизил конец, но неясно чего.",
     "Где-то вздохнул воображаемый бухгалтер.",
     "Продолжай. На всякий случай.",
-    "Первые 50 — самые бессмысленные."
+    "Первые 50 — самые бессмысленные.",
+    "Совершенно необязательный клик. Но приятный.",
+    "Огурец кивнул. Еле заметно.",
+    "Единица бессмыслицы зачислена.",
+    "Этот клик не изменил ничего. Продолжай."
 )
 
 private val midPhrases = listOf(
@@ -88,7 +96,11 @@ private val midPhrases = listOf(
     "Половина смысла уже потеряна. Осталось нечего.",
     "Кнопка начала тебя уважать. Почти.",
     "Странно, но голубь теперь твой фанат.",
-    "50+ единиц. Абсурд крепчает."
+    "50+ единиц. Абсурд крепчает.",
+    "Середина бессмыслицы. Самая бессмысленная часть.",
+    "Кнопка начала подозревать, что ты серьёзно.",
+    "Сто двадцать третья причина не останавливаться.",
+    "Полёт нормальный. Куда — никто не знает."
 )
 
 private val veteranPhrases = listOf(
@@ -99,7 +111,11 @@ private val veteranPhrases = listOf(
     "Картошка аплодирует. Молча.",
     "Вселенная заметила. Ей всё равно.",
     "Огурец впечатлён. Это редкость.",
-    "Ветеран бессмыслицы. Медаль не предусмотрена."
+    "Ветеран бессмыслицы. Медаль не предусмотрена.",
+    "Ветеран абсурда. Медаль забилась под диван.",
+    "Голубь принёс весть: «Продолжай».",
+    "Огурец выставил оценку. Пять с минусом.",
+    "Твои пальцы вошли в историю. Тёмную."
 )
 
 private val epicPhrases = listOf(
@@ -110,7 +126,34 @@ private val epicPhrases = listOf(
     "Это уже не игра. Это философия.",
     "Где-то далеко плачет картошка. От гордости.",
     "Ты доказал: цель не нужна.",
-    "Эпос. Сага. Бессмыслица."
+    "Эпос. Сага. Бессмыслица.",
+    "Легенда гласит: тот, кто дошёл до тысячи, не останавливается.",
+    "Философы спорят о смысле. Ты просто кликаешь.",
+    "Это уже эпическая сага о пальце и кнопке.",
+    "Бухгалтер возвёл руки к небу. Счёт всё равно не сходится."
+)
+
+private val zenPhrases = listOf(
+    "Пять тысяч. Вселенная шепчет: «Зачем?» Ты не отвечаешь.",
+    "Мудрость приходит. Обычно не сюда.",
+    "Ты и кнопка — одно целое. Бессмысленное целое.",
+    "Бухгалтер ушёл в нирвану. Счёт не сошёлся.",
+    "Огурец достиг просветления. Ты почти.",
+    "Смысл не найден. Зато найден ритм.",
+    "Картошка медитирует в твою честь.",
+    "Тишина. Только клики. И вечность."
+)
+
+private val enlightenedPhrases = listOf(
+    "ДЕСЯТЬ ТЫСЯЧ. Ты и есть бессмыслица. И это прекрасно.",
+    "Просветление: ты понял, что останавливаться не обязательно.",
+    "Кнопка и ты — единый космос абсурда.",
+    "Вселенная перестала спрашивать. Ты перестал отвечать.",
+    "Дзен-кликер. Ни цели, ни начала, ни конца.",
+    "Ты нажал так много, что время сдалось.",
+    "Будда бы гордился. Будда бы кликал.",
+    "Существование оправдано. Восемью тысячами кликов.",
+    "Абсолютная бессмыслица достигнута. Поздравляем. С чем — неясно."
 )
 
 private val fastPhrases = listOf(
@@ -119,7 +162,9 @@ private val fastPhrases = listOf(
     "Кнопка еле успевает!",
     "Тап-тап-тап. Барабанная дробь.",
     "Скорость бессмыслицы зашкаливает.",
-    "Пальцу нужен отдых. Но не сейчас."
+    "Пальцу нужен отдых. Но не сейчас.",
+    "Молния отдыхает. Ты кликаешь.",
+    "Скорость света — медленно. Ты — быстро."
 )
 
 private val ultraFastPhrases = listOf(
@@ -128,13 +173,17 @@ private val ultraFastPhrases = listOf(
     "Это уже читерство бессмыслицы.",
     "Стоп! Так нечестно! Ну ладно, продолжай.",
     "Твоя рука — легенда.",
-    "Огурец не успевает следить!"
+    "Огурец не успевает следить!",
+    "Пальцы видят будущее кликов.",
+    "Кнопка просит пощады. Машинально."
 )
 
 private fun pickPhrase(score: Int, streak: Int, lastPhrase: String?): String {
     val pool = when {
         streak >= 15 -> ultraFastPhrases
         streak >= 8 -> fastPhrases
+        score >= 10000 -> enlightenedPhrases
+        score >= 5000 -> zenPhrases
         score >= 1000 -> epicPhrases
         score >= 250 -> veteranPhrases
         score >= 50 -> midPhrases
@@ -142,6 +191,38 @@ private fun pickPhrase(score: Int, streak: Int, lastPhrase: String?): String {
     }
     val candidates = pool.filter { it != lastPhrase }
     return (candidates.ifEmpty { pool }).random()
+}
+
+// Ранг фразы: чем выше счёт, тем глубже и философски звучит
+private fun phraseRank(score: Int, streak: Int): String = when {
+    streak >= 15 -> "Сверхзвуковая"
+    streak >= 8 -> "Быстрая"
+    score >= 10000 -> "Просветлённая"
+    score >= 5000 -> "Мудрая"
+    score >= 1000 -> "Философская"
+    score >= 250 -> "Глубокая"
+    score >= 50 -> "Осмысленная"
+    else -> "Обычная"
+}
+
+// Дневник: хранит полученные фразы (счёт + ранг)
+private data class DiaryEntry(val score: Int, val phrase: String, val rank: String)
+
+private fun readDiary(prefs: SharedPreferences): List<DiaryEntry> {
+    val raw = prefs.getString("diary", null) ?: return emptyList()
+    return try {
+        val arr = JSONArray(raw)
+        (0 until arr.length()).mapNotNull { i ->
+            val o = arr.getJSONObject(i)
+            DiaryEntry(o.getInt("score"), o.getString("phrase"), o.getString("rank"))
+        }
+    } catch (_: Exception) { emptyList() }
+}
+
+private fun writeDiary(prefs: SharedPreferences, entries: List<DiaryEntry>) {
+    val arr = JSONArray()
+    entries.forEach { e -> arr.put(JSONObject().put("score", e.score).put("phrase", e.phrase).put("rank", e.rank)) }
+    prefs.edit().putString("diary", arr.toString()).apply()
 }
 
 private val titles = listOf("Нажми меня", "Не трогай", "Почти готово", "Возможно, сюда", "Кнопка", "Срочно нажми", "Осторожно!", "Тут что-то есть", "Не нажимай", "Последний шанс")
@@ -162,7 +243,7 @@ private val muted = Color(0xFFA6ADC8)
     val activity = context as? Activity
     BackHandler {
         when (page) {
-            "game", "settings", "stats" -> page = "menu"
+            "game", "settings", "stats", "diary" -> page = "menu"
             else -> activity?.finish()
         }
     }
@@ -171,16 +252,17 @@ private val muted = Color(0xFFA6ADC8)
             AnimatedContent(targetState = page, transitionSpec = { fadeIn(tween(280)) togetherWith fadeOut(tween(180)) }, label = "page") { current ->
                 when (current) {
                     "game" -> GameScreen(prefs, soundEnabled, vibrationEnabled, onBack = { page = "menu" })
-                    "settings" -> SettingsScreen(soundEnabled, vibrationEnabled, { soundEnabled = it; prefs.edit().putBoolean("sound_enabled", it).apply() }, { vibrationEnabled = it; prefs.edit().putBoolean("vibration_enabled", it).apply() }, { page = "menu" })
+                    "settings" -> SettingsScreen(prefs, soundEnabled, vibrationEnabled, { soundEnabled = it; prefs.edit().putBoolean("sound_enabled", it).apply() }, { vibrationEnabled = it; prefs.edit().putBoolean("vibration_enabled", it).apply() }, { page = "menu" })
                     "stats" -> StatsScreen(prefs, onBack = { page = "menu" })
-                    else -> MenuScreen(onPlay = { page = "game" }, onSettings = { page = "settings" }, onStats = { page = "stats" }, onExit = { activity?.finish() })
+                    "diary" -> DiaryScreen(prefs, onBack = { page = "menu" })
+                    else -> MenuScreen(onPlay = { page = "game" }, onSettings = { page = "settings" }, onStats = { page = "stats" }, onDiary = { page = "diary" }, onExit = { activity?.finish() })
                 }
             }
         }
     }
 }
 
-@Composable private fun MenuScreen(onPlay: () -> Unit, onSettings: () -> Unit, onStats: () -> Unit, onExit: () -> Unit) {
+@Composable private fun MenuScreen(onPlay: () -> Unit, onSettings: () -> Unit, onStats: () -> Unit, onDiary: () -> Unit, onExit: () -> Unit) {
     val pulse by rememberInfiniteTransition(label = "logo").animateFloat(initialValue = 0.96f, targetValue = 1.04f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "pulse")
     Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Surface(Modifier.size(128.dp).scale(pulse), CircleShape, color = Color(0xFFF97316), shadowElevation = 12.dp) { Box(contentAlignment = Alignment.Center) { Text("⚡", fontSize = 68.sp, fontWeight = FontWeight.Black, color = Color(0xFFFEF3C7)) } }
@@ -190,6 +272,8 @@ private val muted = Color(0xFFA6ADC8)
         MenuButton("Играть", Color(0xFF00A884), onPlay)
         Spacer(Modifier.height(12.dp))
         MenuButton("Статистика", Color(0xFF8B5CF6), onStats)
+        Spacer(Modifier.height(12.dp))
+        MenuButton("Дневник", Color(0xFF0EA5E9), onDiary)
         Spacer(Modifier.height(12.dp))
         MenuButton("Настройки", Color(0xFF2563EB), onSettings)
         Spacer(Modifier.height(12.dp))
@@ -202,13 +286,39 @@ private val muted = Color(0xFFA6ADC8)
     Button(onClick = action, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) { Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
 }
 
-@Composable private fun SettingsScreen(sound: Boolean, vibration: Boolean, onSound: (Boolean) -> Unit, onVibration: (Boolean) -> Unit, onBack: () -> Unit) {
+@Composable private fun SettingsScreen(prefs: SharedPreferences, sound: Boolean, vibration: Boolean, onSound: (Boolean) -> Unit, onVibration: (Boolean) -> Unit, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val clipboardManager = LocalClipboardManager.current
+    val bestScore = prefs.getInt("best_score", 0)
     Column(Modifier.fillMaxSize().padding(24.dp)) {
         Text("НАСТРОЙКИ", color = ink, fontSize = 27.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(22.dp))
         SettingToggle("Звук клика", "Аркадный звук при нажатии", sound, onSound)
         Spacer(Modifier.height(12.dp))
         SettingToggle("Вибрация", "Тактильный отклик при нажатии", vibration, onVibration)
+        Spacer(Modifier.height(22.dp))
+        Surface(shape = RoundedCornerShape(18.dp), color = surface) {
+            Column(Modifier.fillMaxWidth().padding(18.dp)) {
+                Text("Рекорд", color = muted, fontSize = 14.sp)
+                Text("$bestScore", color = ink, fontSize = 32.sp, fontWeight = FontWeight.Black)
+                Text("единиц бессмысленности. Хотя он бессмысленный, как и всё здесь.", color = Color(0xFF6C7086), fontSize = 12.sp)
+            }
+        }
+        Spacer(Modifier.height(22.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+            TextButton(onClick = {
+                val shareText = "Я набрал $bestScore очков в Бессмысленной Игре! Никакой цели, никаких причин остановиться. 🎮⚡"
+                val intent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, shareText)
+                }
+                context.startActivity(Intent.createChooser(intent, "Поделиться результатом"))
+            }) { Text("📤 Поделиться") }
+            TextButton(onClick = {
+                val statsText = "📊 Моя статистика в Бессмысленной Игре:\n• Всего кликов: ${prefs.getInt("total_clicks", 0)}\n• Лучший счёт: $bestScore\n• Время в игре: ${prefs.getLong("time_played_ms", 0) / 60000} мин"
+                clipboardManager.setText(AnnotatedString(statsText))
+            }) { Text("📋 Копировать") }
+        }
         Spacer(Modifier.weight(1f)); OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Назад") }
     }
 }
@@ -252,6 +362,44 @@ private val muted = Color(0xFFA6ADC8)
     }
 }
 
+@Composable private fun DiaryScreen(prefs: SharedPreferences, onBack: () -> Unit) {
+    var entries by remember { mutableStateOf(readDiary(prefs)) }
+    Column(Modifier.fillMaxSize().padding(24.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("ДНЕВНИК БЕССМЫСЛИЦЫ", color = ink, fontSize = 25.sp, fontWeight = FontWeight.Black)
+            Spacer(Modifier.weight(1f))
+            if (entries.isNotEmpty()) {
+                TextButton(onClick = {
+                    entries = emptyList()
+                    writeDiary(prefs, emptyList())
+                }) { Text("Очистить", color = Color(0xFFD14343)) }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        if (entries.isEmpty()) {
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                Text("Пока пусто.\nКликай — фразы будут копиться здесь.", color = muted, textAlign = TextAlign.Center)
+            }
+        } else {
+            LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(entries.reversed()) { entry ->
+                    Surface(shape = RoundedCornerShape(18.dp), color = surface) {
+                        Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(entry.phrase, color = ink)
+                                Text("ранг: ${entry.rank}", color = Color(0xFFF59E0B), fontSize = 12.sp)
+                            }
+                            Text("${entry.score}", color = muted, fontWeight = FontWeight.Bold)
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Назад") }
+    }
+}
+
 @Composable private fun GameScreen(prefs: SharedPreferences, soundEnabled: Boolean, vibrationEnabled: Boolean, onBack: () -> Unit) {
     var score by rememberSaveable { mutableIntStateOf(prefs.getInt("score", 0)) }
     var phrase by rememberSaveable { mutableStateOf("Добро пожаловать в игру без цели.") }
@@ -264,6 +412,8 @@ private val muted = Color(0xFFA6ADC8)
     var showThreshold by remember { mutableStateOf<String?>(null) }
     var clickTimestamps by remember { mutableStateOf<List<Long>>(emptyList()) }
     var lastPhrase by remember { mutableStateOf<String?>(null) }
+    var currentRank by remember { mutableStateOf("") }
+    var diary by remember { mutableStateOf(readDiary(prefs)) }
     var easterEggTriggered by remember { mutableStateOf(false) }
     var sessionStart by remember { mutableStateOf(System.currentTimeMillis()) }
 
@@ -273,7 +423,6 @@ private val muted = Color(0xFFA6ADC8)
     val offset by animateOffsetAsState(targetValue = buttonOffset, animationSpec = tween(400), label = "offset")
     val view = LocalView.current
     val context = view.context
-    val clipboardManager = LocalClipboardManager.current
 
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
@@ -414,7 +563,11 @@ private val muted = Color(0xFFA6ADC8)
                         currentEvent = RandomEvent.UPSIDE_DOWN
                         phrase = "🙃 Держись. Всё наоборот."
                         lastPhrase = phrase
+                        currentRank = "Перевёрнутая"
                         eventMessage = "🙃 Мир перевернулся!"
+                        val entry = DiaryEntry(score, phrase, currentRank)
+                        diary = (diary + entry).takeLast(100)
+                        writeDiary(prefs, diary)
                     }
                 }
             }
@@ -426,9 +579,14 @@ private val muted = Color(0xFFA6ADC8)
                 if (showPhrase) {
                     phrase = pickPhrase(score, streak, lastPhrase)
                     lastPhrase = phrase
+                    currentRank = phraseRank(score, streak)
                     title = titles.random()
+                    val entry = DiaryEntry(score, phrase, currentRank)
+                    diary = (diary + entry).takeLast(100)
+                    writeDiary(prefs, diary)
                 } else {
                     phrase = ""
+                    currentRank = ""
                 }
             }
         }) {
@@ -438,22 +596,7 @@ private val muted = Color(0xFFA6ADC8)
         }
         Spacer(Modifier.height(30.dp))
         Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(if (phrase.isEmpty()) "…" else phrase, color = if (phrase.isEmpty()) Color(0xFF6C7086) else Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
+        if (currentRank.isNotEmpty()) { Text("ранг: $currentRank", color = Color(0xFFF59E0B), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp)) }
         Spacer(Modifier.weight(1f))
-
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-            TextButton(onClick = {
-                val shareText = "Я набрал $score очков в Бессмысленной Игре! Никакой цели, никаких причин остановиться. 🎮⚡"
-                val intent = Intent(Intent.ACTION_SEND).apply {
-                    type = "text/plain"
-                    putExtra(Intent.EXTRA_TEXT, shareText)
-                }
-                context.startActivity(Intent.createChooser(intent, "Поделиться результатом"))
-            }) { Text("📤 Поделиться") }
-            TextButton(onClick = {
-                val statsText = "📊 Моя статистика в Бессмысленной Игре:\n• Всего кликов: ${prefs.getInt("total_clicks", 0)}\n• Лучший счёт: ${prefs.getInt("best_score", 0)}\n• Время в игре: ${prefs.getLong("time_played_ms", 0) / 60000} мин"
-                clipboardManager.setText(AnnotatedString(statsText))
-                eventMessage = "📋 Скопировано в буфер!"
-            }) { Text("📋 Копировать") }
-        }
     }
 }
