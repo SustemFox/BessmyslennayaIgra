@@ -382,18 +382,14 @@ private val muted = Color(0xFFA6ADC8)
             prefs.edit().putInt("total_clicks", prefs.getInt("total_clicks", 0) + 1).apply()
             if (score > prefs.getInt("best_score", 0)) prefs.edit().putInt("best_score", score).apply()
 
-            // Фраза всегда обновляется по условиям: скорость > прогресс, без повторов подряд
-            phrase = pickPhrase(score, streak, lastPhrase)
-            lastPhrase = phrase
-            title = titles.random()
-
             val threshold = thresholdMessages.keys.firstOrNull { it == score }
             if (threshold != null) {
                 showThreshold = thresholdMessages[threshold]
                 prefs.edit().putInt("threshold_reached", maxOf(prefs.getInt("threshold_reached", 0), threshold)).apply()
             }
 
-            if (Random.nextInt(100) < 8 && currentEvent == RandomEvent.NONE) {
+            // Редкое событие (4%) — только если нет активного
+            if (Random.nextInt(100) < 4 && currentEvent == RandomEvent.NONE) {
                 when (Random.nextInt(5)) {
                     0 -> {
                         currentEvent = RandomEvent.RUN_AWAY
@@ -422,13 +418,26 @@ private val muted = Color(0xFFA6ADC8)
                     }
                 }
             }
+
+            // Большинство кликов — «пустые»: просто +1, без фраз, бонусов и пасхалок.
+            // Фраза появляется по условиям: серия быстрых кликов (8+) или шанс ~25%.
+            if (currentEvent == RandomEvent.NONE) {
+                val showPhrase = streak >= 8 || Random.nextInt(100) < 25
+                if (showPhrase) {
+                    phrase = pickPhrase(score, streak, lastPhrase)
+                    lastPhrase = phrase
+                    title = titles.random()
+                } else {
+                    phrase = ""
+                }
+            }
         }) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = if (currentEvent == RandomEvent.SHRINK) 18.sp else 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp))
             }
         }
         Spacer(Modifier.height(30.dp))
-        Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(phrase, color = Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
+        Surface(color = Color(0xFF313244), shape = RoundedCornerShape(18.dp), modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp)) { Box(Modifier.padding(16.dp), contentAlignment = Alignment.Center) { Text(if (phrase.isEmpty()) "…" else phrase, color = if (phrase.isEmpty()) Color(0xFF6C7086) else Color(0xFFCDD6F4), textAlign = TextAlign.Center) } }
         Spacer(Modifier.weight(1f))
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
