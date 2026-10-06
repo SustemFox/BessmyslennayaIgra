@@ -19,14 +19,13 @@ jobs:
           distribution: temurin
           java-version: '17'
           cache: gradle
-      - uses: android-actions/setup-android@v3
-      - name: Install Android SDK
-        run: sdkmanager "platforms;android-34" "build-tools;34.0.0"
+      - name: Accept Android SDK licenses
+        run: yes | sdkmanager --licenses > /dev/null 2>&1 || true
       - name: Restore signing keystore
-        if: ${{ env.KEYSTORE_B64 != '' }}
+        if: env.KEYSTORE_B64 != ''
         run: echo "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/release.jks"
       - name: Create signing properties
-        if: ${{ env.KEYSTORE_B64 != '' }}
+        if: env.KEYSTORE_B64 != ''
         env:
           STORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
