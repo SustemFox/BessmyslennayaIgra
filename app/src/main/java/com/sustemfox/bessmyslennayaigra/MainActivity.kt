@@ -34,6 +34,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -343,6 +344,20 @@ private val muted = Color(0xFFA6ADC8)
         }
     }
 
+    // «Кнопка убежала»: несколько резких прыжков по экрану вместо одного лёгкого сдвига
+    LaunchedEffect(currentEvent) {
+        if (currentEvent == RandomEvent.RUN_AWAY) {
+            repeat(5) {
+                buttonOffset = Offset(
+                    Random.nextInt(-150, 151).toFloat(),
+                    Random.nextInt(-130, 131).toFloat()
+                )
+                delay(400)
+            }
+            buttonOffset = Offset.Zero
+        }
+    }
+
     LaunchedEffect(showThreshold) {
         if (showThreshold != null) {
             delay(3000)
@@ -380,7 +395,7 @@ private val muted = Color(0xFFA6ADC8)
         Spacer(Modifier.height(28.dp))
 
         val clickScale = if (currentEvent == RandomEvent.SHRINK) 0.7f else 1f
-        Surface(color = buttonColor, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale * clickScale).offset(offset.x.dp, offset.y.dp).clickable {
+        Surface(color = buttonColor, shape = CircleShape, shadowElevation = 12.dp, modifier = Modifier.size(220.dp).scale(scale * clickScale).offset(offset.x.dp, offset.y.dp).clip(CircleShape).clickable {
             pressed = true
             if (vibrationEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
             if (soundEnabled) {
@@ -409,7 +424,7 @@ private val muted = Color(0xFFA6ADC8)
                 when (Random.nextInt(5)) {
                     0 -> {
                         currentEvent = RandomEvent.RUN_AWAY
-                        buttonOffset = Offset(Random.nextInt(-80, 81).toFloat(), Random.nextInt(-80, 81).toFloat())
+                        buttonOffset = Offset(Random.nextInt(-150, 151).toFloat(), Random.nextInt(-130, 131).toFloat())
                         eventMessage = "🏃 Кнопка убежала!"
                     }
                     1 -> {
