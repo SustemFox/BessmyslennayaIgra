@@ -25,8 +25,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -128,7 +130,7 @@ private val muted = Color(0xFFA6ADC8)
 
 @Composable private fun MenuScreen(onPlay: () -> Unit, onSettings: () -> Unit, onStats: () -> Unit, onDiary: () -> Unit, onExit: () -> Unit) {
     val pulse by rememberInfiniteTransition(label = "logo").animateFloat(initialValue = 0.96f, targetValue = 1.04f, animationSpec = androidx.compose.animation.core.infiniteRepeatable(tween(1200, easing = FastOutSlowInEasing), androidx.compose.animation.core.RepeatMode.Reverse), label = "pulse")
-    Column(Modifier.fillMaxSize().padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Surface(Modifier.size(128.dp).scale(pulse), CircleShape, color = Color(0xFFF97316), shadowElevation = 12.dp) { Box(contentAlignment = Alignment.Center) { Text("⚡", fontSize = 68.sp, fontWeight = FontWeight.Black, color = Color(0xFFFEF3C7)) } }
         Spacer(Modifier.height(28.dp))
         Text("БЕССМЫСЛЕННАЯ\nИГРА", textAlign = TextAlign.Center, color = ink, fontSize = 31.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
@@ -154,7 +156,7 @@ private val muted = Color(0xFFA6ADC8)
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val bestScore = prefs.getInt("best_score", 0)
-    Column(Modifier.fillMaxSize().padding(24.dp)) {
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp)) {
         Text("НАСТРОЙКИ", color = ink, fontSize = 27.sp, fontWeight = FontWeight.Black)
         Spacer(Modifier.height(22.dp))
         SettingToggle("Звук клика", "Аркадный звук при нажатии", sound, onSound)
@@ -183,7 +185,8 @@ private val muted = Color(0xFFA6ADC8)
                 clipboardManager.setText(AnnotatedString(statsText))
             }) { Text("📋 Копировать") }
         }
-        Spacer(Modifier.weight(1f)); OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Назад") }
+        Spacer(Modifier.height(22.dp))
+        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth().height(54.dp)) { Text("Назад") }
     }
 }
 
@@ -196,7 +199,7 @@ private val muted = Color(0xFFA6ADC8)
     val timePlayed = prefs.getLong("time_played_ms", 0)
     val minutes = (timePlayed / 60000).toInt()
     val seconds = ((timePlayed % 60000) / 1000).toInt()
-    val clicksPerMinute = if (minutes > 0) (totalClicks.toFloat() / minutes).roundToInt() else totalClicks
+    val clicksPerMinute = if (timePlayed > 0) (totalClicks * 60000f / timePlayed).roundToInt() else 0
     val bestScore = prefs.getInt("best_score", 0)
     val thresholdReached = prefs.getInt("threshold_reached", 0)
     Column(Modifier.fillMaxSize().padding(24.dp)) {
@@ -279,7 +282,7 @@ private val muted = Color(0xFFA6ADC8)
     var currentRank by remember { mutableStateOf("") }
     var record by remember { mutableIntStateOf(prefs.getInt("best_score", 0)) }
     var diary by remember { mutableStateOf(readDiary(prefs)) }
-    var easterEggTriggered by remember { mutableStateOf(false) }
+    var easterEggTriggered by remember { mutableStateOf(prefs.getBoolean("easter_egg_found", false)) }
     var sessionStart by remember { mutableStateOf(System.currentTimeMillis()) }
 
     // «Мир перевернулся» — реальный переворот всего интерфейса на 180°
@@ -297,6 +300,8 @@ private val muted = Color(0xFFA6ADC8)
                     .putInt("score", score)
                     .putLong("time_played_ms", prefs.getLong("time_played_ms", 0) + (System.currentTimeMillis() - sessionStart))
                     .apply()
+                sessionStart = System.currentTimeMillis()
+            } else if (event == Lifecycle.Event.ON_RESUME) {
                 sessionStart = System.currentTimeMillis()
             }
         }
@@ -382,27 +387,21 @@ private val muted = Color(0xFFA6ADC8)
                 if (soundReady && clickSound != 0) soundPool.play(clickSound, 0.9f, 0.9f, 1, 0, 1f) else pendingClick = true
             }
 
+            // Все начисления копим в одной переменной и применяем один раз
+            var gained = 1
+            var diaryFromEvent = false
+
             val now = System.currentTimeMillis()
             clickTimestamps = (clickTimestamps.filter { now - it < 2000 } + now).takeLast(20)
             val streak = clickTimestamps.size
+
+            // Пасхалка: один раз за всё время (флаг хранится в prefs)
             if (streak >= 10 && !easterEggTriggered) {
                 easterEggTriggered = true
+                prefs.edit().putBoolean("easter_egg_found", true).apply()
                 eventMessage = "🥚 ПАСХАЛКА! Ты слишком быстр. +50 очков!"
-                score += 50
+                gained += 50
                 buttonColor = Color(0xFFEAB308)
-            }
-
-            score++
-            prefs.edit().putInt("total_clicks", prefs.getInt("total_clicks", 0) + 1).apply()
-            if (score > record) {
-                record = score
-                prefs.edit().putInt("best_score", record).apply()
-            }
-
-            val threshold = thresholdMessages.keys.firstOrNull { it == score }
-            if (threshold != null) {
-                showThreshold = thresholdMessages[threshold]
-                prefs.edit().putInt("threshold_reached", maxOf(prefs.getInt("threshold_reached", 0), threshold)).apply()
             }
 
             // Редкое событие (4%) — только если нет активного
@@ -420,7 +419,7 @@ private val muted = Color(0xFFA6ADC8)
                     }
                     2 -> {
                         currentEvent = RandomEvent.DOUBLE_POINTS
-                        score += 2
+                        gained += 2
                         eventMessage = "✨ Двойные очки! +2"
                     }
                     3 -> {
@@ -433,11 +432,33 @@ private val muted = Color(0xFFA6ADC8)
                         lastPhrase = phrase
                         currentRank = "Перевёрнутая"
                         eventMessage = "🙃 Мир перевернулся!"
-                        val entry = DiaryEntry(score, phrase, currentRank)
-                        diary = (diary + entry).takeLast(100)
-                        writeDiary(prefs, diary)
+                        diaryFromEvent = true
                     }
                 }
+            }
+
+            // Начисляем один раз — с учётом всех бонусов
+            val previousScore = score
+            score += gained
+            prefs.edit().putInt("total_clicks", prefs.getInt("total_clicks", 0) + 1).apply()
+
+            // Рекорд обновляем уже после бонусов
+            if (score > record) {
+                record = score
+                prefs.edit().putInt("best_score", record).apply()
+            }
+
+            // Порог — по переходу, а не по строгому равенству
+            thresholdMessages.keys.sorted().firstOrNull { previousScore < it && score >= it }?.let { threshold ->
+                showThreshold = thresholdMessages[threshold]
+                prefs.edit().putInt("threshold_reached", maxOf(prefs.getInt("threshold_reached", 0), threshold)).apply()
+            }
+
+            // Запись в дневник от события UPSIDE_DOWN
+            if (diaryFromEvent) {
+                val entry = DiaryEntry(score, phrase, currentRank)
+                diary = (diary + entry).takeLast(100)
+                writeDiary(prefs, diary)
             }
 
             // Большинство кликов — «пустые»: просто +1, без фраз, бонусов и пасхалок.
