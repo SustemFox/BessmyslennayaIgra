@@ -158,7 +158,7 @@ import kotlin.random.Random
             Spacer(Modifier.weight(1f))
             Text("Уровень ${score / 25 + 1}", color = muted)
         }
-        Text("ПРИЧИНА НЕ НАЙДЕНА", color = ink, fontSize = 19.sp, fontWeight = FontWeight.Black)
+        DotText("ПРИЧИНА НЕ НАЙДЕНА", modifier = Modifier.fillMaxWidth(0.78f), color = ink)
         Spacer(Modifier.weight(1f))
 
         if (showThreshold != null) {
@@ -179,8 +179,8 @@ import kotlin.random.Random
             }
         }
 
-        Text("$score", fontSize = 82.sp, fontWeight = FontWeight.Black, color = ink)
-        Text("единиц бессмысленности", color = muted)
+        DotText("$score", modifier = Modifier.fillMaxWidth(0.85f).heightIn(max = 150.dp), color = ink)
+        DotText("единиц бессмысленности", modifier = Modifier.fillMaxWidth(0.9f).heightIn(max = 14.dp), color = muted)
         Spacer(Modifier.height(28.dp))
 
         val clickScale = if (currentEvent == RandomEvent.SHRINK) 0.7f else 1f
@@ -295,7 +295,7 @@ import kotlin.random.Random
             }
         }) {
             Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text(title, color = Color.White, textAlign = TextAlign.Center, fontSize = if (currentEvent == RandomEvent.SHRINK) 18.sp else 25.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(20.dp))
+                DotText(title, modifier = Modifier.fillMaxWidth(if (currentEvent == RandomEvent.SHRINK) 0.5f else 0.78f).heightIn(max = if (currentEvent == RandomEvent.SHRINK) 16.dp else 30.dp), color = Color.White)
             }
         }
         Spacer(Modifier.height(30.dp))

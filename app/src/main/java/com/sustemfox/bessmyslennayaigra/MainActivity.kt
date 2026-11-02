@@ -118,7 +118,7 @@ val muted = Color(0xFFA6ADC8)
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Surface(Modifier.size(128.dp).scale(pulse), CircleShape, color = Color(0xFFF97316), shadowElevation = 12.dp) { Box(contentAlignment = Alignment.Center) { Text("⚡", fontSize = 68.sp, fontWeight = FontWeight.Black, color = Color(0xFFFEF3C7)) } }
         Spacer(Modifier.height(28.dp))
-        Text("БЕССМЫСЛЕННАЯ\nИГРА", textAlign = TextAlign.Center, color = ink, fontSize = 31.sp, lineHeight = 35.sp, fontWeight = FontWeight.Black)
+        DotText("БЕССМЫСЛЕННАЯ\nИГРА", modifier = Modifier.padding(horizontal = 4.dp), color = ink)
         Text("Никакой цели. Никаких причин остановиться.", color = muted, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 12.dp, bottom = 40.dp))
         MenuButton("Играть", Color(0xFF00A884), onPlay)
         Spacer(Modifier.height(12.dp))
@@ -134,7 +134,7 @@ val muted = Color(0xFFA6ADC8)
 }
 
 @Composable private fun MenuButton(text: String, color: Color, action: () -> Unit) {
-    Button(onClick = action, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) { Text(text, fontSize = 18.sp, fontWeight = FontWeight.Bold) }
+    Button(onClick = action, modifier = Modifier.fillMaxWidth().height(58.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = color, contentColor = Color.White)) { DotText(text, modifier = Modifier.heightIn(max = 26.dp), color = Color.White) }
 }
 
 @Composable private fun SettingsScreen(prefs: SharedPreferences, sound: Boolean, vibration: Boolean, onSound: (Boolean) -> Unit, onVibration: (Boolean) -> Unit, onBack: () -> Unit) {
